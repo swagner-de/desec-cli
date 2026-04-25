@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,7 +31,8 @@ func init() {
 func initConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME/.config/desec-cli")
+	home, _ := os.UserHomeDir()
+	viper.AddConfigPath(filepath.Join(home, ".config", "desec-cli"))
 	viper.SetDefault("output", "table")
 	viper.SetEnvPrefix("DESEC")
 	viper.BindEnv("token")
