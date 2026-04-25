@@ -57,3 +57,89 @@ func TestClientAPIError(t *testing.T) {
 		t.Fatalf("expected status 400, got %d", apiErr.StatusCode)
 	}
 }
+
+func TestListDomains(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/domains/" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if r.Method != "GET" {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}]`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	domains, err := c.ListDomains()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(domains) != 1 {
+		t.Fatalf("expected 1 domain, got %d", len(domains))
+	}
+	if domains[0].Name != "example.com" {
+		t.Fatalf("expected 'example.com', got '%s'", domains[0].Name)
+	}
+}
+
+func TestGetDomain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/domains/example.com/" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	domain, err := c.GetDomain("example.com")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if domain.Name != "example.com" {
+		t.Fatalf("expected 'example.com', got '%s'", domain.Name)
+	}
+}
+
+func TestCreateDomain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Fatalf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"name":"new.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	domain, err := c.CreateDomain("new.com", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if domain.Name != "new.com" {
+		t.Fatalf("expected 'new.com', got '%s'", domain.Name)
+	}
+}
+
+func TestDeleteDomain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Fatalf("expected DELETE, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	err := c.DeleteDomain("example.com")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
