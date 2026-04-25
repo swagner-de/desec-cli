@@ -35,8 +35,8 @@ func initConfig() {
 	viper.AddConfigPath(filepath.Join(home, ".config", "desec-cli"))
 	viper.SetDefault("output", "table")
 	viper.SetEnvPrefix("DESEC")
-	viper.BindEnv("token")
-	viper.ReadInConfig()
+	_ = viper.BindEnv("token")
+	_ = viper.ReadInConfig()
 
 	if outputFormat == "" {
 		outputFormat = viper.GetString("output")

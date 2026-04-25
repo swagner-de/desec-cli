@@ -23,7 +23,7 @@ func TestClientAuthHeader(t *testing.T) {
 			t.Fatalf("expected 'Token test-token', got '%s'", auth)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -39,7 +39,7 @@ func TestClientAPIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"detail": "bad request"}`))
+		_, _ = w.Write([]byte(`{"detail": "bad request"}`))
 	}))
 	defer server.Close()
 
@@ -67,7 +67,7 @@ func TestListDomains(t *testing.T) {
 			t.Fatalf("unexpected method: %s", r.Method)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}]`))
+		_, _ = w.Write([]byte(`[{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}]`))
 	}))
 	defer server.Close()
 
@@ -91,7 +91,7 @@ func TestGetDomain(t *testing.T) {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
+		_, _ = w.Write([]byte(`{"name":"example.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
 	}))
 	defer server.Close()
 
@@ -112,7 +112,7 @@ func TestCreateDomain(t *testing.T) {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"name":"new.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
+		_, _ = w.Write([]byte(`{"name":"new.com","created":"2024-01-01T00:00:00Z","published":"2024-01-01T00:00:00Z","minimum_ttl":3600}`))
 	}))
 	defer server.Close()
 
@@ -150,7 +150,7 @@ func TestListRRsets(t *testing.T) {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
+		_, _ = w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -166,7 +166,7 @@ func TestListRRsetsWithFilters(t *testing.T) {
 		if r.URL.Query().Get("type") != "A" { t.Fatalf("expected type filter 'A'") }
 		if r.URL.Query().Get("subname") != "www" { t.Fatalf("expected subname filter 'www'") }
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
+		_, _ = w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -179,7 +179,7 @@ func TestCreateRRset(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}`))
+		_, _ = w.Write([]byte(`{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -206,7 +206,7 @@ func TestListTokens(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/auth/tokens/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id":"abc123","name":"test","perm_manage_tokens":true,"is_valid":true}]`))
+		_, _ = w.Write([]byte(`[{"id":"abc123","name":"test","perm_manage_tokens":true,"is_valid":true}]`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -221,7 +221,7 @@ func TestCreateToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":"new123","name":"new-token","token":"secret-value","is_valid":true}`))
+		_, _ = w.Write([]byte(`{"id":"new123","name":"new-token","token":"secret-value","is_valid":true}`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -248,7 +248,7 @@ func TestListPolicies(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/auth/tokens/tok1/policies/rrsets/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id":"pol1","domain":"example.com","subname":"www","type":"A","perm_write":true}]`))
+		_, _ = w.Write([]byte(`[{"id":"pol1","domain":"example.com","subname":"www","type":"A","perm_write":true}]`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -264,7 +264,7 @@ func TestCreatePolicy(t *testing.T) {
 		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
 		if r.URL.Path != "/api/v1/auth/tokens/tok1/policies/rrsets/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":"pol2","domain":"example.com","subname":null,"type":null,"perm_write":false}`))
+		_, _ = w.Write([]byte(`{"id":"pol2","domain":"example.com","subname":null,"type":null,"perm_write":false}`))
 	}))
 	defer server.Close()
 	c := New("test-token")
@@ -296,7 +296,7 @@ func TestDynDNSUpdate(t *testing.T) {
 		auth := r.Header.Get("Authorization")
 		if auth != "Token test-token" { t.Fatalf("expected 'Token test-token', got '%s'", auth) }
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("good"))
+		_, _ = w.Write([]byte("good"))
 	}))
 	defer server.Close()
 	c := New("test-token")
