@@ -201,3 +201,45 @@ func TestDeleteRRset(t *testing.T) {
 	err := c.DeleteRRset("example.com", "www", "A")
 	if err != nil { t.Fatalf("unexpected error: %v", err) }
 }
+
+func TestListTokens(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/auth/tokens/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"id":"abc123","name":"test","perm_manage_tokens":true,"is_valid":true}]`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	tokens, err := c.ListTokens()
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if len(tokens) != 1 { t.Fatalf("expected 1, got %d", len(tokens)) }
+	if tokens[0].ID != "abc123" { t.Fatalf("expected 'abc123', got '%s'", tokens[0].ID) }
+}
+
+func TestCreateToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"new123","name":"new-token","token":"secret-value","is_valid":true}`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	token, err := c.CreateToken(&TokenCreate{Name: "new-token"})
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if token.Token != "secret-value" { t.Fatalf("expected 'secret-value', got '%s'", token.Token) }
+}
+
+func TestDeleteToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" { t.Fatalf("expected DELETE") }
+		if r.URL.Path != "/api/v1/auth/tokens/abc123/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	err := c.DeleteToken("abc123")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+}
