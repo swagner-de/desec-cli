@@ -143,3 +143,61 @@ func TestDeleteDomain(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestListRRsets(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/domains/example.com/rrsets/" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	rrsets, err := c.ListRRsets("example.com", "", "")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if len(rrsets) != 1 { t.Fatalf("expected 1 rrset, got %d", len(rrsets)) }
+	if rrsets[0].Type != "A" { t.Fatalf("expected type 'A', got '%s'", rrsets[0].Type) }
+}
+
+func TestListRRsetsWithFilters(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("type") != "A" { t.Fatalf("expected type filter 'A'") }
+		if r.URL.Query().Get("subname") != "www" { t.Fatalf("expected subname filter 'www'") }
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}]`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	_, err := c.ListRRsets("example.com", "A", "www")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+}
+
+func TestCreateRRset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"subname":"www","type":"A","records":["1.2.3.4"],"ttl":3600}`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	rrset, err := c.CreateRRset("example.com", &RRsetCreate{Subname: "www", Type: "A", Records: []string{"1.2.3.4"}, TTL: 3600})
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if rrset.Subname != "www" { t.Fatalf("expected subname 'www', got '%s'", rrset.Subname) }
+}
+
+func TestDeleteRRset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" { t.Fatalf("expected DELETE, got %s", r.Method) }
+		if r.URL.Path != "/api/v1/domains/example.com/rrsets/www/A/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	err := c.DeleteRRset("example.com", "www", "A")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+}
