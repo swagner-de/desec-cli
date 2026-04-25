@@ -243,3 +243,47 @@ func TestDeleteToken(t *testing.T) {
 	err := c.DeleteToken("abc123")
 	if err != nil { t.Fatalf("unexpected error: %v", err) }
 }
+
+func TestListPolicies(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/auth/tokens/tok1/policies/rrsets/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"id":"pol1","domain":"example.com","subname":"www","type":"A","perm_write":true}]`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	policies, err := c.ListPolicies("tok1")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if len(policies) != 1 { t.Fatalf("expected 1, got %d", len(policies)) }
+	if policies[0].ID != "pol1" { t.Fatalf("expected 'pol1', got '%s'", policies[0].ID) }
+}
+
+func TestCreatePolicy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" { t.Fatalf("expected POST, got %s", r.Method) }
+		if r.URL.Path != "/api/v1/auth/tokens/tok1/policies/rrsets/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"pol2","domain":"example.com","subname":null,"type":null,"perm_write":false}`))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	domain := "example.com"
+	policy, err := c.CreatePolicy("tok1", &TokenPolicyCreate{Domain: &domain})
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if policy.ID != "pol2" { t.Fatalf("expected 'pol2', got '%s'", policy.ID) }
+}
+
+func TestDeletePolicy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" { t.Fatalf("expected DELETE, got %s", r.Method) }
+		if r.URL.Path != "/api/v1/auth/tokens/tok1/policies/rrsets/pol1/" { t.Fatalf("unexpected path: %s", r.URL.Path) }
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	err := c.DeletePolicy("tok1", "pol1")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+}
