@@ -287,3 +287,20 @@ func TestDeletePolicy(t *testing.T) {
 	err := c.DeletePolicy("tok1", "pol1")
 	if err != nil { t.Fatalf("unexpected error: %v", err) }
 }
+
+func TestDynDNSUpdate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" { t.Fatalf("expected GET, got %s", r.Method) }
+		if r.URL.Query().Get("hostname") != "example.com" { t.Fatalf("expected hostname 'example.com'") }
+		if r.URL.Query().Get("myipv4") != "1.2.3.4" { t.Fatalf("expected myipv4 '1.2.3.4'") }
+		auth := r.Header.Get("Authorization")
+		if auth != "Token test-token" { t.Fatalf("expected 'Token test-token', got '%s'", auth) }
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("good"))
+	}))
+	defer server.Close()
+	c := New("test-token")
+	c.dynDNSURL = server.URL
+	err := c.DynDNSUpdate("example.com", "1.2.3.4", "")
+	if err != nil { t.Fatalf("unexpected error: %v", err) }
+}
