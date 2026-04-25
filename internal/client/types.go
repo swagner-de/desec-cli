@@ -1,7 +1,9 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -79,13 +81,41 @@ type TokenPolicyCreate struct {
 
 type APIError struct {
 	StatusCode int
-	Detail     string              `json:"detail"`
-	Fields     map[string][]string `json:"-"`
+	Detail     string
+	Body       string
+}
+
+func (e *APIError) UnmarshalJSON(data []byte) error {
+	// Try {"detail": "..."} first
+	var detail struct {
+		Detail string `json:"detail"`
+	}
+	if err := json.Unmarshal(data, &detail); err == nil && detail.Detail != "" {
+		e.Detail = detail.Detail
+		return nil
+	}
+
+	// Try {"field": ["error", ...], ...} format
+	var fields map[string][]string
+	if err := json.Unmarshal(data, &fields); err == nil && len(fields) > 0 {
+		var parts []string
+		for field, msgs := range fields {
+			parts = append(parts, fmt.Sprintf("%s: %s", field, strings.Join(msgs, "; ")))
+		}
+		e.Detail = strings.Join(parts, ", ")
+		return nil
+	}
+
+	e.Body = string(data)
+	return nil
 }
 
 func (e *APIError) Error() string {
 	if e.Detail != "" {
 		return fmt.Sprintf("%d: %s", e.StatusCode, e.Detail)
+	}
+	if e.Body != "" {
+		return fmt.Sprintf("%d: %s", e.StatusCode, e.Body)
 	}
 	return fmt.Sprintf("%d: API error", e.StatusCode)
 }
