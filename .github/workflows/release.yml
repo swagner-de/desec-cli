@@ -6,22 +6,25 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  release-please:
+  release:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
+      new_release: ${{ steps.semrel.outputs.version }}
     steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
+      - uses: actions/checkout@v6
         with:
-          release-type: go
+          fetch-depth: 0
+
+      - uses: go-semantic-release/action@v1
+        id: semrel
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   goreleaser:
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: release
+    if: needs.release.outputs.new_release != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
