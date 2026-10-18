@@ -6,10 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
-const defaultBaseURL = "https://desec.io/api/v1"
+const (
+	defaultBaseURL       = "https://desec.io/api/v1"
+	maxPaginationPages   = 1000
+	maxHTTPRedirectCount = 10
+)
 
 type Client struct {
 	token     string
@@ -23,8 +28,26 @@ func New(token string) *Client {
 		token:     token,
 		baseURL:   defaultBaseURL,
 		dynDNSURL: "https://update.dedyn.io",
-		http:      &http.Client{},
+		http: &http.Client{
+			CheckRedirect: sameOriginRedirectPolicy,
+		},
 	}
+}
+
+// sameOriginRedirectPolicy prevents credentials from being forwarded to a
+// different origin via an HTTP redirect.
+func sameOriginRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) == 0 {
+		return nil
+	}
+	if len(via) >= maxHTTPRedirectCount {
+		return fmt.Errorf("stopped after %d redirects", maxHTTPRedirectCount)
+	}
+	origin := via[0].URL
+	if req.URL.Scheme != origin.Scheme || !strings.EqualFold(req.URL.Host, origin.Host) {
+		return fmt.Errorf("refusing redirect from %s to %s", origin, req.URL)
+	}
+	return nil
 }
 
 func (c *Client) doRequest(method, path string, body any) ([]byte, error) {
@@ -72,9 +95,24 @@ func (c *Client) doRequest(method, path string, body any) ([]byte, error) {
 func (c *Client) doRequestPaginated(path string) ([]byte, error) {
 	var allResults []json.RawMessage
 
-	url := c.baseURL + path
-	for url != "" {
-		req, err := http.NewRequest("GET", url, nil)
+	nextURL := c.baseURL + path
+	seen := make(map[string]struct{})
+
+	for page := 0; nextURL != ""; page++ {
+		if page >= maxPaginationPages {
+			return nil, fmt.Errorf("pagination exceeded %d pages", maxPaginationPages)
+		}
+		if _, ok := seen[nextURL]; ok {
+			return nil, fmt.Errorf("pagination loop detected at %s", nextURL)
+		}
+		seen[nextURL] = struct{}{}
+
+		pageURL, err := c.validatePaginationURL(nextURL)
+		if err != nil {
+			return nil, err
+		}
+
+		req, err := http.NewRequest("GET", pageURL.String(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
@@ -99,31 +137,101 @@ func (c *Client) doRequestPaginated(path string) ([]byte, error) {
 			return nil, apiErr
 		}
 
-		var page []json.RawMessage
-		if err := json.Unmarshal(body, &page); err != nil {
+		var pageResults []json.RawMessage
+		if err := json.Unmarshal(body, &pageResults); err != nil {
 			return nil, fmt.Errorf("parsing page: %w", err)
 		}
-		allResults = append(allResults, page...)
+		allResults = append(allResults, pageResults...)
 
-		url = getNextLink(resp.Header.Get("Link"))
+		nextURL = getNextLink(strings.Join(resp.Header.Values("Link"), ","))
 	}
 
 	return json.Marshal(allResults)
 }
 
-func getNextLink(linkHeader string) string {
-	if linkHeader == "" {
-		return ""
+// validatePaginationURL ensures that a Link header cannot redirect the
+// authenticated request to a different origin or outside the API base path.
+func (c *Client) validatePaginationURL(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parsing pagination URL: %w", err)
 	}
-	for _, part := range strings.Split(linkHeader, ",") {
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parsing base URL: %w", err)
+	}
+
+	if u.User != nil || u.Scheme != base.Scheme || !strings.EqualFold(u.Host, base.Host) {
+		return nil, fmt.Errorf("refusing pagination link to untrusted URL %q", raw)
+	}
+
+	basePath := strings.TrimSuffix(base.EscapedPath(), "/")
+	if basePath != "" {
+		path := u.EscapedPath()
+		if path != basePath && !strings.HasPrefix(path, basePath+"/") {
+			return nil, fmt.Errorf("refusing pagination link outside API base path: %q", raw)
+		}
+	}
+
+	return u, nil
+}
+
+func getNextLink(linkHeader string) string {
+	for _, part := range splitLinkHeader(linkHeader) {
 		part = strings.TrimSpace(part)
-		if strings.Contains(part, `rel="next"`) {
-			start := strings.Index(part, "<") + 1
-			end := strings.Index(part, ">")
-			if start > 0 && end > start {
-				return part[start:end]
+		if !strings.HasPrefix(part, "<") {
+			continue
+		}
+		end := strings.Index(part, ">")
+		if end < 0 {
+			continue
+		}
+		target := part[1:end]
+		for _, param := range strings.Split(part[end+1:], ";") {
+			param = strings.TrimSpace(param)
+			if !strings.HasPrefix(strings.ToLower(param), "rel=") {
+				continue
+			}
+			rel := strings.Trim(strings.TrimSpace(param[4:]), `"`)
+			for _, value := range strings.Fields(rel) {
+				if strings.EqualFold(value, "next") {
+					return target
+				}
 			}
 		}
 	}
 	return ""
+}
+
+// splitLinkHeader splits a Link header on commas that are outside URI
+// references and quoted parameter values.
+func splitLinkHeader(header string) []string {
+	var parts []string
+	start := 0
+	inURI := false
+	inQuote := false
+
+	for i := 0; i < len(header); i++ {
+		switch header[i] {
+		case '<':
+			if !inQuote {
+				inURI = true
+			}
+		case '>':
+			if !inQuote {
+				inURI = false
+			}
+		case '"':
+			if !inURI {
+				inQuote = !inQuote
+			}
+		case ',':
+			if !inURI && !inQuote {
+				parts = append(parts, header[start:i])
+				start = i + 1
+			}
+		}
+	}
+
+	return append(parts, header[start:])
 }
