@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -115,16 +116,34 @@ var recordUpdateCmd = &cobra.Command{
 	},
 }
 
+var recordDeleteYes bool
+
 var recordDeleteCmd = &cobra.Command{
 	Use:   "delete <domain> <subname> <type>",
 	Short: "Delete a DNS record",
 	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		confirmed, err := confirmRecordDeletion(cmd, args[0], args[1], args[2], recordDeleteYes)
+		if err != nil { return err }
+		if !confirmed { return nil }
 		c := client.New(getToken())
 		if err := c.DeleteRRset(args[0], apiSubname(args[1]), args[2]); err != nil { return err }
 		fmt.Fprintln(os.Stderr, "Record deleted.")
 		return nil
 	},
+}
+
+func confirmRecordDeletion(cmd *cobra.Command, domain, subname, rrType string, yes bool) (bool, error) {
+	if yes { return true, nil }
+	fmt.Fprintf(cmd.ErrOrStderr(), "Delete record %s %s %s? This cannot be undone. [y/N]: ", domain, displaySubname(apiSubname(subname)), rrType)
+	reader := bufio.NewReader(cmd.InOrStdin())
+	answer, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF { return false, fmt.Errorf("reading confirmation: %w", err) }
+	if strings.TrimSpace(strings.ToLower(answer)) != "y" {
+		fmt.Fprintln(cmd.ErrOrStderr(), "Aborted.")
+		return false, nil
+	}
+	return true, nil
 }
 
 var recordBulkFile string
@@ -180,6 +199,7 @@ func init() {
 	recordCreateCmd.Flags().StringArrayVar(&recordCreateRecords, "record", nil, "Record value (repeatable)")
 	_ = recordCreateCmd.MarkFlagRequired("type")
 	_ = recordCreateCmd.MarkFlagRequired("record")
+	recordDeleteCmd.Flags().BoolVarP(&recordDeleteYes, "yes", "y", false, "Skip confirmation prompt")
 	recordUpdateCmd.Flags().IntVar(&recordUpdateTTL, "ttl", 0, "New TTL in seconds")
 	recordUpdateCmd.Flags().StringArrayVar(&recordUpdateRecords, "record", nil, "New record value (repeatable, replaces all)")
 	recordBulkCmd.Flags().StringVar(&recordBulkFile, "file", "", "Read JSON from file instead of stdin")
