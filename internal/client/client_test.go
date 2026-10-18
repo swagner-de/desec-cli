@@ -512,3 +512,10 @@ func TestGetNextLink(t *testing.T) {
 		})
 	}
 }
+
+func TestClientHasRequestTimeout(t *testing.T) {
+	c := New("test-token")
+	if c.http.Timeout != defaultHTTPTimeout {
+		t.Fatalf("expected timeout %s, got %s", defaultHTTPTimeout, c.http.Timeout)
+	}
+}

@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
 	defaultBaseURL       = "https://desec.io/api/v1"
 	maxPaginationPages   = 1000
 	maxHTTPRedirectCount = 10
+	defaultHTTPTimeout   = 30 * time.Second
 )
 
 type Client struct {
@@ -29,6 +31,7 @@ func New(token string) *Client {
 		baseURL:   defaultBaseURL,
 		dynDNSURL: "https://update.dedyn.io",
 		http: &http.Client{
+			Timeout:       defaultHTTPTimeout,
 			CheckRedirect: sameOriginRedirectPolicy,
 		},
 	}
