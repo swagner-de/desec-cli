@@ -143,6 +143,8 @@ var tokenUpdateSubnets []string
 var tokenUpdatePermManageTokens bool
 var tokenUpdatePermCreateDomain bool
 var tokenUpdatePermDeleteDomain bool
+var tokenUpdateMaxAge string
+var tokenUpdateMaxUnusedPeriod string
 
 var tokenUpdateCmd = &cobra.Command{
 	Use:   "update <id>",
@@ -165,6 +167,16 @@ var tokenUpdateCmd = &cobra.Command{
 		}
 		if cmd.Flags().Changed("perm-delete-domain") {
 			update["perm_delete_domain"] = tokenUpdatePermDeleteDomain
+		}
+		if cmd.Flags().Changed("max-age") {
+			if err := addTokenDurationUpdate(update, "max_age", tokenUpdateMaxAge); err != nil {
+				return err
+			}
+		}
+		if cmd.Flags().Changed("max-unused-period") {
+			if err := addTokenDurationUpdate(update, "max_unused_period", tokenUpdateMaxUnusedPeriod); err != nil {
+				return err
+			}
 		}
 		if len(update) == 0 {
 			return fmt.Errorf("nothing to update — specify at least one flag")
@@ -231,6 +243,8 @@ func init() {
 	tokenUpdateCmd.Flags().BoolVar(&tokenUpdatePermManageTokens, "perm-manage-tokens", false, "Allow managing tokens")
 	tokenUpdateCmd.Flags().BoolVar(&tokenUpdatePermCreateDomain, "perm-create-domain", false, "Allow creating domains")
 	tokenUpdateCmd.Flags().BoolVar(&tokenUpdatePermDeleteDomain, "perm-delete-domain", false, "Allow deleting domains")
+	tokenUpdateCmd.Flags().StringVar(&tokenUpdateMaxAge, "max-age", "", "Maximum token age (empty clears the setting)")
+	tokenUpdateCmd.Flags().StringVar(&tokenUpdateMaxUnusedPeriod, "max-unused-period", "", "Maximum unused period (empty clears the setting)")
 
 	tokenDeleteCmd.Flags().BoolVarP(&tokenDeleteYes, "yes", "y", false, "Skip confirmation prompt")
 
@@ -257,5 +271,17 @@ func validateTokenDuration(name, value string) error {
 	if !tokenDurationPattern.MatchString(value) {
 		return fmt.Errorf("%s must use the deSEC duration format \"[DD] [[HH:]MM:]ss[.uuuuuu]\" (for example \"30 00:00:00\")", name)
 	}
+	return nil
+}
+
+func addTokenDurationUpdate(update map[string]any, key, value string) error {
+	if value == "" {
+		update[key] = nil
+		return nil
+	}
+	if err := validateTokenDuration(key, value); err != nil {
+		return err
+	}
+	update[key] = value
 	return nil
 }

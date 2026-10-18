@@ -26,3 +26,24 @@ func TestValidateTokenDuration(t *testing.T) {
 		}
 	}
 }
+
+func TestAddTokenDurationUpdate(t *testing.T) {
+	update := map[string]any{}
+	if err := addTokenDurationUpdate(update, "max_age", "30 00:00:00"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if update["max_age"] != "30 00:00:00" {
+		t.Fatalf("max_age = %#v", update["max_age"])
+	}
+
+	if err := addTokenDurationUpdate(update, "max_unused_period", ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if value, ok := update["max_unused_period"]; !ok || value != nil {
+		t.Fatalf("max_unused_period = %#v, want explicit nil", value)
+	}
+
+	if err := addTokenDurationUpdate(update, "max_age", "30d"); err == nil {
+		t.Fatal("expected invalid duration to fail")
+	}
+}
