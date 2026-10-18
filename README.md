@@ -24,7 +24,8 @@ Run the interactive setup:
 desec-cli config init
 ```
 
-This creates `~/.config/desec-cli/config.yaml`:
+If a configuration file already exists, pass `--force` to overwrite it. This
+creates `~/.config/desec-cli/config.yaml`:
 
 ```yaml
 token: "your-api-token"
@@ -70,6 +71,12 @@ desec-cli record update example.com www A --record 9.10.11.12
 desec-cli record delete example.com www A
 ```
 
+Destructive record deletion asks for confirmation. In scripts, pass `--yes`:
+
+```bash
+desec-cli record delete example.com www A --yes
+```
+
 Use `@` for the zone apex:
 
 ```bash
@@ -100,6 +107,7 @@ desec-cli token list
 desec-cli token get <token-id>
 desec-cli token create --name "my-token"
 desec-cli token create --name "restricted" --perm-create-domain --subnet 10.0.0.0/8
+desec-cli token create --name "temporary" --max-age "30 00:00:00"
 desec-cli token update <token-id> --name "renamed"
 desec-cli token delete <token-id>
 ```
@@ -129,9 +137,16 @@ desec-cli token-policy delete <token-id> <policy-id>
 ### Dynamic DNS
 
 ```bash
-desec-cli dyndns update --hostname example.dedyn.io --ipv4 1.2.3.4
-desec-cli dyndns update --hostname example.dedyn.io --ipv6 2001:db8::1
-desec-cli dyndns update --hostname example.dedyn.io --ipv4 1.2.3.4 --ipv6 2001:db8::1
+desec-cli dyndns update --hostname example.dedyn.io \
+  --ipv4 1.2.3.4 --ipv6 2001:db8::1
+```
+
+Both address families are required. Use `preserve` to keep the existing value
+for one family, or an explicit value for both:
+
+```bash
+desec-cli dyndns update --hostname example.dedyn.io \
+  --ipv4 1.2.3.4 --ipv6 preserve
 ```
 
 ## Output formats
