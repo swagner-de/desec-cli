@@ -17,6 +17,8 @@ var configCmd = &cobra.Command{
 	Short: "Manage desec-cli configuration",
 }
 
+var configInitForce bool
+
 var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize configuration file",
@@ -31,6 +33,9 @@ var configInitCmd = &cobra.Command{
 
 		path, err := config.DefaultPath()
 		if err != nil {
+			return err
+		}
+		if err := ensureConfigWritable(path, configInitForce); err != nil {
 			return err
 		}
 		cfg := &config.Config{
@@ -48,6 +53,7 @@ var configInitCmd = &cobra.Command{
 }
 
 func init() {
+	configInitCmd.Flags().BoolVar(&configInitForce, "force", false, "Overwrite an existing configuration file")
 	configCmd.AddCommand(configInitCmd)
 	rootCmd.AddCommand(configCmd)
 }
@@ -69,4 +75,16 @@ func readToken(cmd *cobra.Command) (string, error) {
 		return "", fmt.Errorf("reading token: %w", err)
 	}
 	return strings.TrimSpace(token), nil
+}
+
+func ensureConfigWritable(path string, force bool) error {
+	if force {
+		return nil
+	}
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("configuration already exists at %s; use --force to overwrite", path)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking configuration file: %w", err)
+	}
+	return nil
 }
