@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -80,10 +81,18 @@ var tokenCreateMaxAge string
 var tokenCreateMaxUnusedPeriod string
 var tokenCreateShowSecret bool
 
+var tokenDurationPattern = regexp.MustCompile(`^(\d+ )?((\d{1,2}:)?\d{1,2}:\d{2}|\d+)(\.\d{1,6})?$`)
+
 var tokenCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new token",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := validateTokenDuration("--max-age", tokenCreateMaxAge); err != nil {
+			return err
+		}
+		if err := validateTokenDuration("--max-unused-period", tokenCreateMaxUnusedPeriod); err != nil {
+			return err
+		}
 		c := client.New(getToken())
 		tc := &client.TokenCreate{
 			Name:            tokenCreateName,
@@ -213,8 +222,8 @@ func init() {
 	tokenCreateCmd.Flags().BoolVar(&tokenCreatePermManageTokens, "perm-manage-tokens", false, "Allow managing tokens")
 	tokenCreateCmd.Flags().BoolVar(&tokenCreatePermCreateDomain, "perm-create-domain", false, "Allow creating domains")
 	tokenCreateCmd.Flags().BoolVar(&tokenCreatePermDeleteDomain, "perm-delete-domain", false, "Allow deleting domains")
-	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxAge, "max-age", "", "Maximum token age (e.g. 30d)")
-	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxUnusedPeriod, "max-unused-period", "", "Maximum unused period (e.g. 7d)")
+	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxAge, "max-age", "", "Maximum token age (deSEC duration, e.g. \"30 00:00:00\")")
+	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxUnusedPeriod, "max-unused-period", "", "Maximum unused period (deSEC duration, e.g. \"7 00:00:00\")")
 	tokenCreateCmd.Flags().BoolVar(&tokenCreateShowSecret, "show-secret", false, "Print a newly created token secret even when stderr is not a terminal")
 
 	tokenUpdateCmd.Flags().StringVar(&tokenUpdateName, "name", "", "Token name")
@@ -239,4 +248,14 @@ func shouldPrintTokenSecret(cmd *cobra.Command, force bool) bool {
 	}
 	f, ok := cmd.ErrOrStderr().(*os.File)
 	return ok && term.IsTerminal(int(f.Fd()))
+}
+
+func validateTokenDuration(name, value string) error {
+	if value == "" {
+		return nil
+	}
+	if !tokenDurationPattern.MatchString(value) {
+		return fmt.Errorf("%s must use the deSEC duration format \"[DD] [[HH:]MM:]ss[.uuuuuu]\" (for example \"30 00:00:00\")", name)
+	}
+	return nil
 }
