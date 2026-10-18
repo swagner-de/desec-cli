@@ -627,3 +627,22 @@ func TestBulkRRsetsPreservesPartialPatch(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestListRRsetsApexFilter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		values, ok := r.URL.Query()["subname"]
+		if !ok {
+			t.Error("expected subname query parameter for apex filter")
+		} else if len(values) != 1 || values[0] != "" {
+			t.Errorf("subname = %#v, want one empty value", values)
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	if _, err := c.ListRRsets("example.com", "", "@"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

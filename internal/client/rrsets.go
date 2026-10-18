@@ -10,7 +10,10 @@ func (c *Client) ListRRsets(domain, rrType, subname string) ([]RRset, error) {
 	path := fmt.Sprintf("/domains/%s/rrsets/", url.PathEscape(domain))
 	params := url.Values{}
 	if rrType != "" { params.Set("type", rrType) }
-	if subname != "" { params.Set("subname", subname) }
+	if subname != "" {
+		if subname == "@" { subname = "" }
+		params.Set("subname", subname)
+	}
 	if len(params) > 0 { path += "?" + params.Encode() }
 	data, err := c.doRequestPaginated(path)
 	if err != nil { return nil, err }
