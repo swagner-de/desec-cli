@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -592,5 +593,37 @@ func TestUpdateRRsetNoContent(t *testing.T) {
 	}
 	if rrset != nil {
 		t.Fatalf("expected nil rrset after 204, got %#v", rrset)
+	}
+}
+
+func TestBulkRRsetsPreservesPartialPatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		var body []map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decoding body: %v", err)
+		}
+		if len(body) != 1 {
+			t.Fatalf("expected one RRset, got %d", len(body))
+		}
+		if _, ok := body[0]["ttl"]; ok {
+			t.Error("expected ttl to be omitted")
+		}
+		records, ok := body[0]["records"].([]any)
+		if !ok || len(records) != 0 {
+			t.Errorf("expected empty records array, got %#v", body[0]["records"])
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	records := []string{}
+	if _, err := c.BulkRRsets("example.com", []RRsetUpdate{{Subname: "www", Type: "A", Records: &records}}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

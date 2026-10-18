@@ -39,6 +39,15 @@ type RRsetCreate struct {
 	TTL     int      `json:"ttl"`
 }
 
+// RRsetUpdate is a partial RRset representation for bulk PATCH requests.
+// Pointer fields distinguish omitted values from an explicit empty list.
+type RRsetUpdate struct {
+	Subname string    `json:"subname"`
+	Type    string    `json:"type"`
+	Records *[]string `json:"records,omitempty"`
+	TTL     *int      `json:"ttl,omitempty"`
+}
+
 type Token struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`

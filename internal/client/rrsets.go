@@ -56,7 +56,7 @@ func (c *Client) DeleteRRset(domain, subname, rrType string) error {
 	return err
 }
 
-func (c *Client) BulkRRsets(domain string, rrsets []RRsetCreate) ([]RRset, error) {
+func (c *Client) BulkRRsets(domain string, rrsets []RRsetUpdate) ([]RRset, error) {
 	path := fmt.Sprintf("/domains/%s/rrsets/", url.PathEscape(domain))
 	data, err := c.doRequest("PATCH", path, rrsets)
 	if err != nil { return nil, err }

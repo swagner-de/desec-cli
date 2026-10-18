@@ -145,7 +145,7 @@ var recordBulkCmd = &cobra.Command{
 		}
 		data, err := io.ReadAll(input)
 		if err != nil { return fmt.Errorf("reading input: %w", err) }
-		var rrsets []client.RRsetCreate
+		var rrsets []client.RRsetUpdate
 		if err := json.Unmarshal(data, &rrsets); err != nil { return fmt.Errorf("parsing JSON: %w", err) }
 		c := client.New(getToken())
 		results, err := c.BulkRRsets(args[0], rrsets)
