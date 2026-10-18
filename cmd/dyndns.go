@@ -21,8 +21,8 @@ var dyndnsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update dynamic DNS IP address",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if dyndnsIPv4 == "" && dyndnsIPv6 == "" {
-			return fmt.Errorf("at least one of --ipv4 or --ipv6 must be specified")
+		if err := validateDynDNSUpdate(dyndnsHostname, dyndnsIPv4, dyndnsIPv6); err != nil {
+			return err
 		}
 		c := client.New(getToken())
 		if err := c.DynDNSUpdate(dyndnsHostname, dyndnsIPv4, dyndnsIPv6); err != nil {
@@ -33,10 +33,20 @@ var dyndnsUpdateCmd = &cobra.Command{
 	},
 }
 
+func validateDynDNSUpdate(hostname, ipv4, ipv6 string) error {
+	if hostname == "" {
+		return fmt.Errorf("--hostname is required")
+	}
+	if ipv4 == "" || ipv6 == "" {
+		return fmt.Errorf("both --ipv4 and --ipv6 are required; use \"preserve\" to keep an existing address")
+	}
+	return nil
+}
+
 func init() {
 	dyndnsUpdateCmd.Flags().StringVar(&dyndnsHostname, "hostname", "", "Hostname to update")
-	dyndnsUpdateCmd.Flags().StringVar(&dyndnsIPv4, "ipv4", "", "IPv4 address")
-	dyndnsUpdateCmd.Flags().StringVar(&dyndnsIPv6, "ipv6", "", "IPv6 address")
+	dyndnsUpdateCmd.Flags().StringVar(&dyndnsIPv4, "ipv4", "", "IPv4 address or \"preserve\"")
+	dyndnsUpdateCmd.Flags().StringVar(&dyndnsIPv6, "ipv6", "", "IPv6 address or \"preserve\"")
 	dyndnsCmd.AddCommand(dyndnsUpdateCmd)
 	rootCmd.AddCommand(dyndnsCmd)
 }
