@@ -104,6 +104,11 @@ func (c *Client) doRequestPaginated(path string) ([]byte, error) {
 	var allResults []json.RawMessage
 
 	nextURL := c.baseURL + path
+	if strings.Contains(nextURL, "?") {
+		nextURL += "&cursor="
+	} else {
+		nextURL += "?cursor="
+	}
 	seen := make(map[string]struct{})
 
 	for page := 0; nextURL != ""; page++ {
