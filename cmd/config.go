@@ -28,7 +28,10 @@ var configInitCmd = &cobra.Command{
 			return fmt.Errorf("token cannot be empty")
 		}
 
-		path := config.DefaultPath()
+		path, err := config.DefaultPath()
+		if err != nil {
+			return err
+		}
 		cfg := &config.Config{
 			Token:  token,
 			Output: "table",
