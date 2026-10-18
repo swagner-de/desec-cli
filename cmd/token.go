@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/swagner-de/desec-cli/internal/client"
 	"github.com/swagner-de/desec-cli/internal/output"
+	"golang.org/x/term"
 )
 
 var tokenCmd = &cobra.Command{
@@ -77,6 +78,7 @@ var tokenCreatePermCreateDomain bool
 var tokenCreatePermDeleteDomain bool
 var tokenCreateMaxAge string
 var tokenCreateMaxUnusedPeriod string
+var tokenCreateShowSecret bool
 
 var tokenCreateCmd = &cobra.Command{
 	Use:   "create",
@@ -105,7 +107,11 @@ var tokenCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "Token created. Secret (shown once): %s\n", t.Token)
+		if shouldPrintTokenSecret(cmd, tokenCreateShowSecret) {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Token created. Secret (shown once): %s\n", t.Token)
+		} else {
+			fmt.Fprintln(cmd.ErrOrStderr(), "Token created. Secret not printed because stderr is not a terminal; use --show-secret or --output json if you need it.")
+		}
 		if outputFormat == "table" {
 			headers := []string{"ID", "NAME", "VALID", "MANAGE TOKENS", "CREATE DOMAIN", "DELETE DOMAIN", "SUBNETS"}
 			rows := [][]string{{
@@ -209,6 +215,7 @@ func init() {
 	tokenCreateCmd.Flags().BoolVar(&tokenCreatePermDeleteDomain, "perm-delete-domain", false, "Allow deleting domains")
 	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxAge, "max-age", "", "Maximum token age (e.g. 30d)")
 	tokenCreateCmd.Flags().StringVar(&tokenCreateMaxUnusedPeriod, "max-unused-period", "", "Maximum unused period (e.g. 7d)")
+	tokenCreateCmd.Flags().BoolVar(&tokenCreateShowSecret, "show-secret", false, "Print a newly created token secret even when stderr is not a terminal")
 
 	tokenUpdateCmd.Flags().StringVar(&tokenUpdateName, "name", "", "Token name")
 	tokenUpdateCmd.Flags().StringArrayVar(&tokenUpdateSubnets, "subnet", nil, "Allowed subnet (repeatable, replaces all)")
@@ -224,4 +231,12 @@ func init() {
 	tokenCmd.AddCommand(tokenUpdateCmd)
 	tokenCmd.AddCommand(tokenDeleteCmd)
 	rootCmd.AddCommand(tokenCmd)
+}
+
+func shouldPrintTokenSecret(cmd *cobra.Command, force bool) bool {
+	if force {
+		return true
+	}
+	f, ok := cmd.ErrOrStderr().(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
 }

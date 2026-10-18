@@ -52,3 +52,14 @@ func TestEnsureConfigWritable(t *testing.T) {
 		t.Fatalf("ensureConfigWritable(missing) error = %v", err)
 	}
 }
+
+func TestShouldPrintTokenSecret(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetErr(io.Discard)
+	if shouldPrintTokenSecret(cmd, false) {
+		t.Fatal("expected secrets to be hidden when stderr is not a terminal")
+	}
+	if !shouldPrintTokenSecret(cmd, true) {
+		t.Fatal("expected --show-secret to force secret output")
+	}
+}
