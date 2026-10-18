@@ -3,10 +3,11 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 func (c *Client) ListPolicies(tokenID string) ([]TokenPolicy, error) {
-	data, err := c.doRequestPaginated(fmt.Sprintf("/auth/tokens/%s/policies/rrsets/", tokenID))
+	data, err := c.doRequestPaginated(fmt.Sprintf("/auth/tokens/%s/policies/rrsets/", url.PathEscape(tokenID)))
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +19,7 @@ func (c *Client) ListPolicies(tokenID string) ([]TokenPolicy, error) {
 }
 
 func (c *Client) GetPolicy(tokenID, policyID string) (*TokenPolicy, error) {
-	data, err := c.doRequest("GET", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", tokenID, policyID), nil)
+	data, err := c.doRequest("GET", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", url.PathEscape(tokenID), url.PathEscape(policyID)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +31,7 @@ func (c *Client) GetPolicy(tokenID, policyID string) (*TokenPolicy, error) {
 }
 
 func (c *Client) CreatePolicy(tokenID string, create *TokenPolicyCreate) (*TokenPolicy, error) {
-	data, err := c.doRequest("POST", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/", tokenID), create)
+	data, err := c.doRequest("POST", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/", url.PathEscape(tokenID)), create)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func (c *Client) CreatePolicy(tokenID string, create *TokenPolicyCreate) (*Token
 }
 
 func (c *Client) UpdatePolicy(tokenID, policyID string, update map[string]any) (*TokenPolicy, error) {
-	data, err := c.doRequest("PATCH", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", tokenID, policyID), update)
+	data, err := c.doRequest("PATCH", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", url.PathEscape(tokenID), url.PathEscape(policyID)), update)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +55,6 @@ func (c *Client) UpdatePolicy(tokenID, policyID string, update map[string]any) (
 }
 
 func (c *Client) DeletePolicy(tokenID, policyID string) error {
-	_, err := c.doRequest("DELETE", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", tokenID, policyID), nil)
+	_, err := c.doRequest("DELETE", fmt.Sprintf("/auth/tokens/%s/policies/rrsets/%s/", url.PathEscape(tokenID), url.PathEscape(policyID)), nil)
 	return err
 }

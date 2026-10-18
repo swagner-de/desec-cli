@@ -519,3 +519,22 @@ func TestClientHasRequestTimeout(t *testing.T) {
 		t.Fatalf("expected timeout %s, got %s", defaultHTTPTimeout, c.http.Timeout)
 	}
 }
+
+func TestPathComponentsAreEscaped(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		want := "/api/v1/domains/example.com%2Fextra/rrsets/www%2Fsub/A%3F/"
+		if got := r.URL.EscapedPath(); got != want {
+			t.Errorf("escaped path = %q, want %q", got, want)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"subname":"www/sub","type":"A?","records":[],"ttl":3600}`))
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	_, err := c.GetRRset("example.com/extra", "www/sub", "A?")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

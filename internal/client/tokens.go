@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 func (c *Client) ListTokens() ([]Token, error) {
@@ -18,7 +19,7 @@ func (c *Client) ListTokens() ([]Token, error) {
 }
 
 func (c *Client) GetToken(id string) (*Token, error) {
-	data, err := c.doRequest("GET", fmt.Sprintf("/auth/tokens/%s/", id), nil)
+	data, err := c.doRequest("GET", fmt.Sprintf("/auth/tokens/%s/", url.PathEscape(id)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func (c *Client) CreateToken(create *TokenCreate) (*Token, error) {
 }
 
 func (c *Client) UpdateToken(id string, update map[string]any) (*Token, error) {
-	data, err := c.doRequest("PATCH", fmt.Sprintf("/auth/tokens/%s/", id), update)
+	data, err := c.doRequest("PATCH", fmt.Sprintf("/auth/tokens/%s/", url.PathEscape(id)), update)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +55,6 @@ func (c *Client) UpdateToken(id string, update map[string]any) (*Token, error) {
 }
 
 func (c *Client) DeleteToken(id string) error {
-	_, err := c.doRequest("DELETE", fmt.Sprintf("/auth/tokens/%s/", id), nil)
+	_, err := c.doRequest("DELETE", fmt.Sprintf("/auth/tokens/%s/", url.PathEscape(id)), nil)
 	return err
 }

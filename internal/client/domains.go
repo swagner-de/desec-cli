@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 )
 
 func (c *Client) ListDomains() ([]Domain, error) {
@@ -18,7 +19,7 @@ func (c *Client) ListDomains() ([]Domain, error) {
 }
 
 func (c *Client) GetDomain(name string) (*Domain, error) {
-	data, err := c.doRequest("GET", fmt.Sprintf("/domains/%s/", name), nil)
+	data, err := c.doRequest("GET", fmt.Sprintf("/domains/%s/", url.PathEscape(name)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +47,12 @@ func (c *Client) CreateDomain(name string, zonefile string) (*Domain, error) {
 }
 
 func (c *Client) DeleteDomain(name string) error {
-	_, err := c.doRequest("DELETE", fmt.Sprintf("/domains/%s/", name), nil)
+	_, err := c.doRequest("DELETE", fmt.Sprintf("/domains/%s/", url.PathEscape(name)), nil)
 	return err
 }
 
 func (c *Client) ExportDomain(name string) (string, error) {
-	data, err := c.doRequest("GET", fmt.Sprintf("/domains/%s/zonefile/", name), nil)
+	data, err := c.doRequest("GET", fmt.Sprintf("/domains/%s/zonefile/", url.PathEscape(name)), nil)
 	if err != nil {
 		return "", err
 	}
