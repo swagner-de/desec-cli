@@ -43,6 +43,7 @@ func (c *Client) UpdateRRset(domain, subname, rrType string, update map[string]a
 	path := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", url.PathEscape(domain), url.PathEscape(subname), url.PathEscape(rrType))
 	data, err := c.doRequest("PATCH", path, update)
 	if err != nil { return nil, err }
+	if len(data) == 0 { return nil, nil }
 	var result RRset
 	if err := json.Unmarshal(data, &result); err != nil { return nil, fmt.Errorf("parsing rrset: %w", err) }
 	return &result, nil
@@ -59,6 +60,7 @@ func (c *Client) BulkRRsets(domain string, rrsets []RRsetCreate) ([]RRset, error
 	path := fmt.Sprintf("/domains/%s/rrsets/", url.PathEscape(domain))
 	data, err := c.doRequest("PATCH", path, rrsets)
 	if err != nil { return nil, err }
+	if len(data) == 0 { return nil, nil }
 	var result []RRset
 	if err := json.Unmarshal(data, &result); err != nil { return nil, fmt.Errorf("parsing rrsets: %w", err) }
 	return result, nil

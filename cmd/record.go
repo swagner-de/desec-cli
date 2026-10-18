@@ -101,6 +101,10 @@ var recordUpdateCmd = &cobra.Command{
 		if len(update) == 0 { return fmt.Errorf("nothing to update — specify --ttl and/or --record") }
 		rrset, err := c.UpdateRRset(args[0], apiSubname(args[1]), args[2], update)
 		if err != nil { return err }
+		if rrset == nil {
+			fmt.Fprintln(cmd.ErrOrStderr(), "Record deleted.")
+			return nil
+		}
 		if outputFormat == "table" {
 			fmt.Fprintln(os.Stderr, "Record updated.")
 			headers := []string{"SUBNAME", "TYPE", "TTL", "RECORDS"}

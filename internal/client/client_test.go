@@ -574,3 +574,23 @@ func TestPaginationStartsWithEmptyCursor(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestUpdateRRsetNoContent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	rrset, err := c.UpdateRRset("example.com", "www", "A", map[string]any{"records": []string{}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rrset != nil {
+		t.Fatalf("expected nil rrset after 204, got %#v", rrset)
+	}
+}
