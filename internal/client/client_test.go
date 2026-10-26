@@ -376,6 +376,7 @@ func TestDynDNSUpdate(t *testing.T) {
 	defer server.Close()
 	c := New("test-token")
 	c.dynDNSURL = server.URL
+	c.dynDNSHTTP = server.Client()
 	err := c.DynDNSUpdate("example.com", "1.2.3.4", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -517,6 +518,22 @@ func TestClientHasRequestTimeout(t *testing.T) {
 	c := New("test-token")
 	if c.http.Timeout != defaultHTTPTimeout {
 		t.Fatalf("expected timeout %s, got %s", defaultHTTPTimeout, c.http.Timeout)
+	}
+}
+
+func TestClientHasDedicatedDynDNSHTTPClient(t *testing.T) {
+	c := New("test-token")
+	if c.dynDNSHTTP == c.http {
+		t.Fatal("expected dynDNS to use a dedicated HTTP client")
+	}
+	if c.dynDNSHTTP.Timeout != defaultDynDNSTimeout {
+		t.Fatalf("expected dynDNS timeout %s, got %s", defaultDynDNSTimeout, c.dynDNSHTTP.Timeout)
+	}
+	if c.dynDNSHTTP.CheckRedirect != nil {
+		t.Fatal("expected dynDNS client to use default redirect behavior")
+	}
+	if c.http.CheckRedirect == nil {
+		t.Fatal("expected API client to keep the redirect policy")
 	}
 }
 

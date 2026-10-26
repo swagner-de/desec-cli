@@ -16,13 +16,15 @@ const (
 	maxPaginationPages   = 1000
 	maxHTTPRedirectCount = 10
 	defaultHTTPTimeout   = 30 * time.Second
+	defaultDynDNSTimeout = 60 * time.Second
 )
 
 type Client struct {
-	token     string
-	baseURL   string
-	dynDNSURL string
-	http      *http.Client
+	token      string
+	baseURL    string
+	dynDNSURL  string
+	http       *http.Client
+	dynDNSHTTP *http.Client
 }
 
 func New(token string) *Client {
@@ -33,6 +35,9 @@ func New(token string) *Client {
 		http: &http.Client{
 			Timeout:       defaultHTTPTimeout,
 			CheckRedirect: sameOriginRedirectPolicy,
+		},
+		dynDNSHTTP: &http.Client{
+			Timeout: defaultDynDNSTimeout,
 		},
 	}
 }

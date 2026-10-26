@@ -16,7 +16,7 @@ func (c *Client) DynDNSUpdate(hostname, ipv4, ipv6 string) error {
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil { return fmt.Errorf("creating request: %w", err) }
 	req.Header.Set("Authorization", "Token "+c.token)
-	resp, err := c.http.Do(req)
+	resp, err := c.dynDNSHTTP.Do(req)
 	if err != nil { return fmt.Errorf("executing request: %w", err) }
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
