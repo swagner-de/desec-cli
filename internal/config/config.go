@@ -36,11 +36,22 @@ func DefaultPath() (string, error) {
 // current user.
 func Write(path string, cfg *Config) error {
 	dir := filepath.Dir(path)
+
+	dirExisted := true
+	if _, err := os.Stat(dir); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("checking config directory: %w", err)
+		}
+		dirExisted = false
+	}
+
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
 	}
-	if err := os.Chmod(dir, 0700); err != nil {
-		return fmt.Errorf("restricting config directory permissions: %w", err)
+	if !dirExisted {
+		if err := os.Chmod(dir, 0700); err != nil {
+			return fmt.Errorf("restricting config directory permissions: %w", err)
+		}
 	}
 
 	data, err := yaml.Marshal(cfg)
