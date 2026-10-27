@@ -44,7 +44,13 @@ func TestPrintTable(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "NAME") || !strings.Contains(out, "foo") {
-		t.Fatalf("expected table output, got: %s", out)
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected header and two rows without borders, got: %q", out)
+	}
+	for i, want := range []string{"NAME  VALUE", "foo   1", "bar   2"} {
+		if got := strings.TrimRight(lines[i], " "); got != want {
+			t.Errorf("line %d = %q, want %q", i, got, want)
+		}
 	}
 }
