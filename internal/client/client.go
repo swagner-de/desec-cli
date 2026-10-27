@@ -103,12 +103,14 @@ func (c *Client) doRequest(method, path string, body any) ([]byte, error) {
 func (c *Client) doRequestPaginated(path string) ([]byte, error) {
 	var allResults []json.RawMessage
 
-	nextURL := c.baseURL + path
-	if strings.Contains(nextURL, "?") {
-		nextURL += "&cursor="
-	} else {
-		nextURL += "?cursor="
+	u, err := url.Parse(c.baseURL + path)
+	if err != nil {
+		return nil, fmt.Errorf("parsing pagination URL: %w", err)
 	}
+	query := u.Query()
+	query.Set("cursor", "")
+	u.RawQuery = query.Encode()
+	nextURL := u.String()
 	seen := make(map[string]struct{})
 
 	for page := 0; nextURL != ""; page++ {
