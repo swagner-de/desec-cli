@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,18 +80,10 @@ var tokenCreateMaxAge string
 var tokenCreateMaxUnusedPeriod string
 var tokenCreateShowSecret bool
 
-var tokenDurationPattern = regexp.MustCompile(`^(\d+ )?((\d{1,2}:)?\d{1,2}:\d{2}|\d+)(\.\d{1,6})?$`)
-
 var tokenCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new token",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := validateTokenDuration("--max-age", tokenCreateMaxAge); err != nil {
-			return err
-		}
-		if err := validateTokenDuration("--max-unused-period", tokenCreateMaxUnusedPeriod); err != nil {
-			return err
-		}
 		c := client.New(getToken())
 		tc := &client.TokenCreate{
 			Name:            tokenCreateName,
@@ -169,14 +160,10 @@ var tokenUpdateCmd = &cobra.Command{
 			update["perm_delete_domain"] = tokenUpdatePermDeleteDomain
 		}
 		if cmd.Flags().Changed("max-age") {
-			if err := addTokenDurationUpdate(update, "max_age", tokenUpdateMaxAge); err != nil {
-				return err
-			}
+			addTokenDurationUpdate(update, "max_age", tokenUpdateMaxAge)
 		}
 		if cmd.Flags().Changed("max-unused-period") {
-			if err := addTokenDurationUpdate(update, "max_unused_period", tokenUpdateMaxUnusedPeriod); err != nil {
-				return err
-			}
+			addTokenDurationUpdate(update, "max_unused_period", tokenUpdateMaxUnusedPeriod)
 		}
 		if len(update) == 0 {
 			return fmt.Errorf("nothing to update — specify at least one flag")
@@ -264,24 +251,10 @@ func shouldPrintTokenSecret(cmd *cobra.Command, force bool) bool {
 	return ok && term.IsTerminal(int(f.Fd()))
 }
 
-func validateTokenDuration(name, value string) error {
-	if value == "" {
-		return nil
-	}
-	if !tokenDurationPattern.MatchString(value) {
-		return fmt.Errorf("%s must use the deSEC duration format \"[DD] [[HH:]MM:]ss[.uuuuuu]\" (for example \"30 00:00:00\")", name)
-	}
-	return nil
-}
-
-func addTokenDurationUpdate(update map[string]any, key, value string) error {
+func addTokenDurationUpdate(update map[string]any, key, value string) {
 	if value == "" {
 		update[key] = nil
-		return nil
-	}
-	if err := validateTokenDuration(key, value); err != nil {
-		return err
+		return
 	}
 	update[key] = value
-	return nil
 }
