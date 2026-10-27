@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/swagner-de/desec-cli/internal/client"
 )
 
 func TestConfirmRecordDeletion(t *testing.T) {
@@ -36,5 +37,14 @@ func TestConfirmRecordDeletion(t *testing.T) {
 				t.Fatalf("confirmRecordDeletion() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestBulkResultMessage(t *testing.T) {
+	if got := bulkResultMessage(nil); got != "Bulk update applied." {
+		t.Fatalf("bulkResultMessage(nil) = %q", got)
+	}
+	if got := bulkResultMessage([]client.RRset{{}, {}}); got != "2 records processed." {
+		t.Fatalf("bulkResultMessage() = %q", got)
 	}
 }

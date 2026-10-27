@@ -170,7 +170,8 @@ var recordBulkCmd = &cobra.Command{
 		results, err := c.BulkRRsets(args[0], rrsets)
 		if err != nil { return err }
 		if outputFormat == "table" {
-			fmt.Fprintf(os.Stderr, "%d records processed.\n", len(results))
+			fmt.Fprintln(cmd.ErrOrStderr(), bulkResultMessage(results))
+			if results == nil { return nil }
 			headers := []string{"SUBNAME", "TYPE", "TTL", "RECORDS"}
 			var rows [][]string
 			for _, r := range results { rows = append(rows, []string{displaySubname(r.Subname), r.Type, fmt.Sprintf("%d", r.TTL), strings.Join(r.Records, ", ")}) }
@@ -188,6 +189,13 @@ func apiSubname(s string) string {
 func displaySubname(s string) string {
 	if s == "" { return "@" }
 	return s
+}
+
+func bulkResultMessage(results []client.RRset) string {
+	if results == nil {
+		return "Bulk update applied."
+	}
+	return fmt.Sprintf("%d records processed.", len(results))
 }
 
 func init() {
