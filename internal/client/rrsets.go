@@ -44,9 +44,18 @@ func (c *Client) CreateRRset(domain string, rrset *RRsetCreate) (*RRset, error) 
 func (c *Client) UpdateRRset(domain, subname, rrType string, update map[string]any) (*RRset, error) {
 	if subname == "" { subname = "@" }
 	path := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", url.PathEscape(domain), url.PathEscape(subname), url.PathEscape(rrType))
+
+	emptyRecords := false
+	if records, ok := update["records"].([]string); ok && len(records) == 0 {
+		emptyRecords = true
+	}
+
 	data, err := c.doRequest("PATCH", path, update)
 	if err != nil { return nil, err }
-	if len(data) == 0 { return nil, nil }
+	if len(data) == 0 {
+		if emptyRecords { return nil, nil }
+		return nil, fmt.Errorf("unexpected empty response from API")
+	}
 	var result RRset
 	if err := json.Unmarshal(data, &result); err != nil { return nil, fmt.Errorf("parsing rrset: %w", err) }
 	return &result, nil
@@ -63,6 +72,7 @@ func (c *Client) BulkRRsets(domain string, rrsets []RRsetUpdate) ([]RRset, error
 	path := fmt.Sprintf("/domains/%s/rrsets/", url.PathEscape(domain))
 	data, err := c.doRequest("PATCH", path, rrsets)
 	if err != nil { return nil, err }
+	// deSEC returns 204 when a bulk PATCH deletes every requested RRset.
 	if len(data) == 0 { return nil, nil }
 	var result []RRset
 	if err := json.Unmarshal(data, &result); err != nil { return nil, fmt.Errorf("parsing rrsets: %w", err) }

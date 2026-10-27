@@ -646,3 +646,17 @@ func TestListRRsetsApexFilter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestUpdateRRsetUnexpectedEmptyResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	c := New("test-token")
+	c.baseURL = server.URL + "/api/v1"
+	_, err := c.UpdateRRset("example.com", "www", "A", map[string]any{"ttl": 600})
+	if err == nil {
+		t.Fatal("expected unexpected empty response to be rejected")
+	}
+}
